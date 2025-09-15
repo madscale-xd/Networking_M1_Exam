@@ -59,6 +59,9 @@ public class CharacterSelectorUIButtonPhoton : MonoBehaviour
         }
 
         RefreshSelection();
+
+        // <-- ensure default selection is persisted so spawner can use it
+        SaveSelectionToPhoton();
     }
 
     public void Next()

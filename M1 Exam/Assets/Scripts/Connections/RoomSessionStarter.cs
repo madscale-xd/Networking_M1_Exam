@@ -1,78 +1,163 @@
-// RoomSessionStarter.cs
+// CompactRoomSessionStarter.cs (with TMP UI)
+using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using Photon.Pun;
 using Photon.Realtime;
 using ExitGames.Client.Photon;
+using Hashtable = ExitGames.Client.Photon.Hashtable;
+using TMPro;
 
-public class RoomSessionStarter : MonoBehaviourPunCallbacks
+public class CompactRoomSessionStarter : MonoBehaviourPunCallbacks
 {
-    [Header("Session")]
-    [SerializeField] private string sessionSceneName = "SessionScene";
+    [SerializeField] string sessionSceneName = "SessionScene";
+    [SerializeField] Button startSessionButton;
 
-    [Tooltip("Reference for validation. Must also be placed under a Resources folder at runtime.")]
-    [SerializeField] private GameObject playerPrefab;
+    [Header("UI (assign a TextMeshProUGUI to display countdown seconds)")]
+    [SerializeField] TextMeshProUGUI countdownText;
+    [SerializeField] float uiUpdateInterval = 0.25f; // how often the UI polls remaining time
 
-    [Header("UI")]
-    [SerializeField] private Button startSessionButton; // optional: only interactable for MasterClient
+    const string K_START = "session_countdown_start";
+    const string K_DUR = "session_countdown_duration";
+
+    Coroutine masterWatcher;
+    Coroutine uiUpdater;
 
     void Start()
     {
-        if (startSessionButton != null)
-        {
-            startSessionButton.onClick.AddListener(OnStartSessionClicked);
-            startSessionButton.interactable = PhotonNetwork.IsMasterClient;
-        }
+        if (startSessionButton) startSessionButton.onClick.AddListener(OnStartClicked);
+        if (startSessionButton) startSessionButton.interactable = PhotonNetwork.IsMasterClient;
+
+        if (PhotonNetwork.InRoom)
+            EvaluateAndSyncCountdown();
+
+        // start UI updater (clients + master) if a TMP field is assigned
+        if (countdownText != null)
+            uiUpdater = StartCoroutine(CountdownUIUpdater());
     }
+
+    public override void OnPlayerEnteredRoom(Player newPlayer)  { if (PhotonNetwork.IsMasterClient) EvaluateAndSyncCountdown(); }
+    public override void OnPlayerLeftRoom(Player otherPlayer)    { if (PhotonNetwork.IsMasterClient) EvaluateAndSyncCountdown(); }
+    public override void OnMasterClientSwitched(Player newMaster) { if (PhotonNetwork.IsMasterClient) EvaluateAndSyncCountdown(); }
 
     void OnDestroy()
     {
-        if (startSessionButton != null) startSessionButton.onClick.RemoveListener(OnStartSessionClicked);
+        if (startSessionButton) startSessionButton.onClick.RemoveListener(OnStartClicked);
+        if (uiUpdater != null) StopCoroutine(uiUpdater);
     }
 
-    // Keep button interactability correct if master client changes
-    public override void OnMasterClientSwitched(Player newMasterClient)
+    void OnStartClicked()
     {
-        if (startSessionButton != null) startSessionButton.interactable = PhotonNetwork.IsMasterClient;
-    }
-
-    public override void OnPlayerEnteredRoom(Player newPlayer)
-    {
-        if (startSessionButton != null) startSessionButton.interactable = PhotonNetwork.IsMasterClient;
-    }
-
-    public override void OnPlayerLeftRoom(Player otherPlayer)
-    {
-        if (startSessionButton != null) startSessionButton.interactable = PhotonNetwork.IsMasterClient;
-    }
-
-    // Called by the UI button (or call programmatically)
-    public void OnStartSessionClicked()
-    {
-        if (!PhotonNetwork.IsMasterClient)
-        {
-            Debug.LogWarning("Only the MasterClient can start the session.");
-            return;
-        }
-
-        // Optional: set a room custom property so others can know which scene was requested
-        Hashtable props = new Hashtable { { "scene", sessionSceneName } };
-        PhotonNetwork.CurrentRoom?.SetCustomProperties(props);
-
-        // This will cause all clients to load the scene because AutomaticallySyncScene = true
+        if (!PhotonNetwork.IsMasterClient) return;
+        PhotonNetwork.CurrentRoom?.SetCustomProperties(new Hashtable { { K_START, 0.0 }, { K_DUR, 0f } });
         PhotonNetwork.LoadLevel(sessionSceneName);
     }
 
-#if UNITY_EDITOR
-    // Editor-time warning to help you remember to put the prefab in Resources
-    private void OnValidate()
+    void EvaluateAndSyncCountdown()
     {
-        if (playerPrefab != null)
+        if (!PhotonNetwork.InRoom) return;
+        int p = PhotonNetwork.CurrentRoom.PlayerCount;
+        float desired = (p >= 4) ? 5f : (p == 3 ? 15f : (p == 2 ? 30f : 0f));
+        if (p < 2) { ClearCountdown(); return; }
+
+        var props = PhotonNetwork.CurrentRoom.CustomProperties;
+        double start = props.ContainsKey(K_START) ? Convert.ToDouble(props[K_START]) : 0.0;
+        float dur = props.ContainsKey(K_DUR) ? Convert.ToSingle(props[K_DUR]) : 0f;
+        double now = PhotonNetwork.Time;
+        double remaining = (dur > 0f) ? (start + dur - now) : -1.0;
+
+        if (remaining <= 0.0)
+            StartCountdownAsMaster(desired);
+        else if (desired < remaining)
+            StartCountdownAsMaster(desired); // shorten only
+    }
+
+    void StartCountdownAsMaster(float duration)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        double start = PhotonNetwork.Time;
+        PhotonNetwork.CurrentRoom?.SetCustomProperties(new Hashtable { { K_START, start }, { K_DUR, duration } });
+        if (masterWatcher != null) StopCoroutine(masterWatcher);
+        masterWatcher = StartCoroutine(MasterWatchAndLoad());
+    }
+
+    IEnumerator MasterWatchAndLoad()
+    {
+        while (true)
         {
-            string path = UnityEditor.AssetDatabase.GetAssetPath(playerPrefab);
-            if (!path.Contains("/Resources/"))
-                Debug.LogWarning($"RoomSessionStarter: '{playerPrefab.name}' is not under a Resources folder. PhotonNetwork.Instantiate requires the prefab to be in Resources at runtime.");
+            if (!PhotonNetwork.InRoom) yield break;
+            var props = PhotonNetwork.CurrentRoom.CustomProperties;
+            double start = props.ContainsKey(K_START) ? Convert.ToDouble(props[K_START]) : 0.0;
+            float dur = props.ContainsKey(K_DUR) ? Convert.ToSingle(props[K_DUR]) : 0f;
+            double remaining = (dur > 0f) ? (start + dur - PhotonNetwork.Time) : -1.0;
+
+            if (remaining <= 0.0 && dur > 0f)
+            {
+                PhotonNetwork.CurrentRoom?.SetCustomProperties(new Hashtable { { K_START, 0.0 }, { K_DUR, 0f } });
+                PhotonNetwork.LoadLevel(sessionSceneName);
+                yield break;
+            }
+
+            yield return new WaitForSeconds(0.5f);
         }
     }
-#endif
+
+    void ClearCountdown()
+    {
+        PhotonNetwork.CurrentRoom?.SetCustomProperties(new Hashtable { { K_START, 0.0 }, { K_DUR, 0f } });
+        if (masterWatcher != null) { StopCoroutine(masterWatcher); masterWatcher = null; }
+        UpdateCountdownText(0f); // clear UI immediately
+    }
+
+    public override void OnRoomPropertiesUpdate(Hashtable propertiesThatChanged)
+    {
+        base.OnRoomPropertiesUpdate(propertiesThatChanged);
+        // Update UI immediately when props change
+        float rem = GetRemainingSecondsFromRoom();
+        UpdateCountdownText(rem);
+    }
+
+    IEnumerator CountdownUIUpdater()
+    {
+        while (true)
+        {
+            if (!PhotonNetwork.InRoom)
+            {
+                UpdateCountdownText(0f);
+            }
+            else
+            {
+                float remaining = GetRemainingSecondsFromRoom();
+                UpdateCountdownText(remaining);
+            }
+
+            yield return new WaitForSeconds(uiUpdateInterval);
+        }
+    }
+
+    void UpdateCountdownText(float secondsLeft)
+    {
+        if (countdownText == null) return;
+
+        if (secondsLeft <= 0f)
+        {
+            countdownText.text = "";
+            return;
+        }
+
+        // show whole seconds (ceil so UI shows "1" until it hits 0)
+        int secs = Mathf.CeilToInt(secondsLeft);
+        countdownText.text = secs.ToString();
+    }
+
+    public static float GetRemainingSecondsFromRoom()
+    {
+        if (!PhotonNetwork.InRoom) return 0f;
+        var props = PhotonNetwork.CurrentRoom.CustomProperties;
+        double start = props.ContainsKey(K_START) ? Convert.ToDouble(props[K_START]) : 0.0;
+        float dur = props.ContainsKey(K_DUR) ? Convert.ToSingle(props[K_DUR]) : 0f;
+        double remaining = (dur > 0f) ? (start + dur - PhotonNetwork.Time) : 0.0;
+        return Mathf.Max(0f, (float)remaining);
+    }
 }
