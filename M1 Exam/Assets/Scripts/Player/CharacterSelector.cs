@@ -6,6 +6,7 @@ using UnityEngine.Events;
 using Photon.Pun;
 using ExitGames.Client.Photon; // for Hashtable
 using Photon.Realtime;
+using TMPro;
 
 public class CharacterSelectorUIButtonPhoton : MonoBehaviour
 {
@@ -23,6 +24,13 @@ public class CharacterSelectorUIButtonPhoton : MonoBehaviour
     [Header("Sprite Mode")]
     public Image targetImage;
     public List<Sprite> characterSprites = new List<Sprite>();
+
+    [Header("Name UI (TextMeshPro)")]
+    [Tooltip("Optional: TextMeshProUGUI that displays the current character's name.")]
+    [SerializeField] public TextMeshProUGUI characterNameText;
+
+    [Tooltip("Optional: explicit display names for your characters (index -> name). If empty, falls back to prefabResourceNames or characterObjects' names.")]
+    [SerializeField] public List<string> characterNames = new List<string>();
 
     [Header("Prefab mapping (Resource names)")]
     [Tooltip("List of prefab names (strings) that exist in a Resources folder. Index must correspond to characters.")]
@@ -112,6 +120,7 @@ public class CharacterSelectorUIButtonPhoton : MonoBehaviour
             {
                 int safeIndex = Mathf.Clamp(currentIndex, 0, characterSprites.Count - 1);
                 targetImage.sprite = characterSprites[safeIndex];
+                UpdateNameUI();
             }
         }
 
@@ -164,4 +173,34 @@ public class CharacterSelectorUIButtonPhoton : MonoBehaviour
     }
 
     public int GetCurrentIndex() => currentIndex;
+
+    private void UpdateNameUI()
+    {
+        if (characterNameText == null) return;
+
+        int count = GetCount();
+        if (count == 0)
+        {
+            characterNameText.text = "";
+            return;
+        }
+
+        // Ensure safe index in range (should already be valid, but be defensive)
+        int safeIndex = Mathf.Clamp(currentIndex, 0, Mathf.Max(0, count - 1));
+        string displayName = null;
+
+        if (characterNames != null && safeIndex < characterNames.Count && !string.IsNullOrEmpty(characterNames[safeIndex]))
+            displayName = characterNames[safeIndex];
+        else if (prefabResourceNames != null && safeIndex < prefabResourceNames.Count && !string.IsNullOrEmpty(prefabResourceNames[safeIndex]))
+            displayName = prefabResourceNames[safeIndex];
+        else if (mode == Mode.GameObjectMode && characterObjects != null && safeIndex < characterObjects.Count && characterObjects[safeIndex] != null)
+            displayName = characterObjects[safeIndex].name;
+        else if (mode == Mode.SpriteMode && characterSprites != null && safeIndex < characterSprites.Count && characterSprites[safeIndex] != null)
+            displayName = characterSprites[safeIndex].name;
+
+        if (string.IsNullOrEmpty(displayName))
+            displayName = $"Character {safeIndex}";
+
+        characterNameText.text = displayName;
+    }
 }
