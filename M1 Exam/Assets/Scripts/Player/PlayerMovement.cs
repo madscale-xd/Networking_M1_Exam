@@ -150,17 +150,14 @@ public class PlayerMovement3D : MonoBehaviourPun, IPunObservable
             velocity.y += gravity * Time.deltaTime;
         }
 
-        Vector3 move = horizontal + Vector3.up * velocity.y;
+        Vector3 move = desiredMove * currentSpeed + Vector3.up * velocity.y;
         cc.Move(move * Time.deltaTime);
 
-        // Calculate current movement magnitude (ignoring vertical velocity)
-        float moveAmount = new Vector3(horizontal.x, 0, horizontal.z).magnitude;
+        float moveMagnitude = input.magnitude; // 0 to 1
+animator.SetFloat("Speed", moveMagnitude, 0.1f, Time.deltaTime * 10f);
+Debug.Log("Speed parameter: " + moveMagnitude);
 
-        // Update animator parameters
-        if (animator != null)
-        {
-            animator.SetFloat("Speed", moveAmount);
-        }
+
 
     }
 
