@@ -96,8 +96,8 @@ LightmapSettings:
     m_ExportTrainingData: 0
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
-  m_LightingDataAsset: {fileID: 0}
-  m_LightingSettings: {fileID: 0}
+  m_LightingDataAsset: {fileID: 112000000, guid: 701365a56f5051c42b1e7adb842d4852, type: 2}
+  m_LightingSettings: {fileID: 4890085278179872738, guid: 0aae29be2b32d5f40a4095e4830b24e4, type: 2}
 --- !u!196 &4
 NavMeshSettings:
   serializedVersion: 2
@@ -147,7 +147,7 @@ Transform:
   m_GameObject: {fileID: 154361686}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.418, y: 1.3, z: 0.398}
+  m_LocalPosition: {x: 0.418, y: 1.03, z: 0.398}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -272,7 +272,7 @@ Transform:
   m_GameObject: {fileID: 657013120}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.428, y: 1.3, z: -0.39}
+  m_LocalPosition: {x: -0.428, y: 1.03, z: -0.39}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -303,7 +303,7 @@ Transform:
   m_GameObject: {fileID: 967611405}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.431, y: 1.3, z: -0.39}
+  m_LocalPosition: {x: 0.431, y: 1.03, z: -0.431}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -409,8 +409,8 @@ Transform:
   m_GameObject: {fileID: 1438057180}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -3.48, z: 2.58}
-  m_LocalScale: {x: 16.097208, y: 2.7249355, z: 16.097208}
+  m_LocalPosition: {x: 0, y: -12.9, z: 2.58}
+  m_LocalScale: {x: 143.11856, y: 6.762209, z: 143.11856}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 154361687}
@@ -432,12 +432,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerPrefab: {fileID: 5757560010211559606, guid: 31f118fbb20384a498313a7dbdec2586, type: 3}
-  playerPrefabName: Player
+  playerPrefabName: Player1
   spawnPoints:
   - {fileID: 154361687}
   - {fileID: 1863148896}
   - {fileID: 657013121}
   - {fileID: 967611406}
+  prefabPrefabs:
+  - {fileID: 5757560010211559606, guid: 31f118fbb20384a498313a7dbdec2586, type: 3}
+  - {fileID: 5757560010211559606, guid: 3db7d6c04d8f8e04d87913407d464980, type: 3}
+  - {fileID: 5757560010211559606, guid: e43e6ac6ae137774880cd551e7266f8c, type: 3}
+  - {fileID: 5757560010211559606, guid: 651a2a4c63d0d164d9f6d4493540fdd4, type: 3}
 --- !u!1 &1863148895
 GameObject:
   m_ObjectHideFlags: 0
@@ -463,7 +468,7 @@ Transform:
   m_GameObject: {fileID: 1863148895}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.428, y: 1.3, z: 0.398}
+  m_LocalPosition: {x: -0.428, y: 1.03, z: 0.398}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
